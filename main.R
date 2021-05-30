@@ -4,7 +4,10 @@
 # Created on: 5/24/2021
 
 library(ggplot2); library(dplyr); library(reshape); library(viridis); library(hrbrthemes)
-library(plotly); library(tidyverse); library(htmlwidgets)
+library(plotly); library(tidyverse); library(htmlwidgets); library(RColorBrewer)
+
+nb.cols <- 17
+my_colors <- colorRampPalette(brewer.pal(8, "Set2"))(nb.cols)
 
 # load metadata tsv
 metadata <- read.csv("C:/Users/User/Documents/NGS/metadata.tsv", sep = '\t')
@@ -28,39 +31,38 @@ tmp <- crossing(tmp, knownVariant)
 by_known_var <- df%>% group_by(date, knownVariant) %>% summarise(n=n())# only known variant column, not pangoclade
 by_known_var <- tmp %>% left_join(by_known_var, by=c("date","knownVariant"))
 by_known_var[is.na(by_known_var)] <- 0
-by_known_var <- by_known_var %>% subset(date >= "2020-11-01")
-by_known_var <- by_known_var %>% mutate(week=cut.Date(date, breaks = "2 weeks", labels = FALSE))
+by_known_var <- by_known_var %>% subset(date >= "2020-10-01")
+by_known_var <- by_known_var %>% mutate(week=as.Date(cut.Date(date, breaks = "2 weeks", start.on.monday = FALSE)))
 twoWeeks_count <- by_known_var %>% group_by(week, knownVariant) %>% summarise(count=sum(n)) %>% ungroup()
 twoWeeks_count <- twoWeeks_count %>% group_by(week) %>% summarise(count=count, knownVariant=knownVariant,
                                                                   ratio = count/sum(count)) %>% ungroup()
 area_plot <- ggplot(twoWeeks_count, aes(x=week, y=ratio, fill=knownVariant)) +
-  geom_area(size=0.2, colour="black") + ggtitle("SARS-CoV-2 Israel") #+ scale_x_date(date_breaks = "2 week")
+  geom_area() + ggtitle("SARS-CoV-2 Israel") + scale_x_date(date_breaks = "2 week") + theme(axis.text.x = element_text(angle = 90, vjust = 0.3, hjust = 0.5),
+  panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.background = element_blank()) + scale_color_brewer(palette = "Se")
 print(area_plot)
 
 
-
-
-# p <- plotly_build(area_plot) %>%
-# layout(updatemenus = list(
-#     list(
-#         type = "buttons",
-#         direction = "right",
-#         xanchor = "center",
-#         yanchor = "top",
-#         showactive = FALSE,
-#         x = 1.05,
-#         y = -0.25,
-#         buttons = list(
-#             list(method = "restyle",
-#                  args = list("visible", "all"),
-#                  label = "show all"),
-#             list(method = "restyle",
-#                  args = list("visible", "legendonly"),
-#                  label = "hide all")
-#         )
-#     )
-# ))
-# htmlwidgets::saveWidget(as_widget(p), "VariantsIsrael.html")
+p <- plotly_build(area_plot) %>%
+layout(updatemenus = list(
+    list(
+        type = "buttons",
+        direction = "right",
+        xanchor = "center",
+        yanchor = "top",
+        showactive = FALSE,
+        x = 1.05,
+        y = -0.25,
+        buttons = list(
+            list(method = "restyle",
+                 args = list("visible", "all"),
+                 label = "show all"),
+            list(method = "restyle",
+                 args = list("visible", "legendonly"),
+                 label = "hide all")
+        )
+    )
+))
+htmlwidgets::saveWidget(as_widget(p), "VariantsIsrael.html")
 
 # without british variant
 # by_known_var_nouk <- df %>% group_by(date, knownVariant) %>% summarise(n=n())
